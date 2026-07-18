@@ -31,6 +31,8 @@ services:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-ofiuco_medical}
     ports:
       - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - ./os_modelo:/app/os_modelo:ro
     depends_on:
       db:
         condition: service_healthy

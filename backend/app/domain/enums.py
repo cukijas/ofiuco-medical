@@ -25,6 +25,20 @@ class CategoryEnum(str, enum.Enum):
     tomografos = "tomografos"
 
 
+class VisitTypeEnum(str, enum.Enum):
+    """Service visit type."""
+    normal = "normal"
+    contract = "contract"
+    warranty = "warranty"
+
+
+class EquipmentConditionEnum(str, enum.Enum):
+    """Equipment condition at time of service."""
+    new = "new"
+    used = "used"
+    other = "other"
+
+
 class AttachmentTypeEnum(str, enum.Enum):
     """Attachment types."""
     report = "report"

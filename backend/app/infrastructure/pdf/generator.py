@@ -1,9 +1,9 @@
 """PDF generator adapter — WeasyPrint HTML to PDF conversion."""
 
+import base64
 import logging
 import uuid
 from pathlib import Path
-from typing import Optional
 
 import jinja2
 from jinja2 import Environment, FileSystemLoader
@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.domain.models.attachment import Attachment
+from backend.app.domain.models.category import Category
 from backend.app.domain.models.client import Client
 from backend.app.domain.models.equipment import Equipment
 from backend.app.domain.models.service_order import ServiceOrder
@@ -23,6 +24,9 @@ logger = logging.getLogger(__name__)
 # Template directory
 TEMPLATE_DIR = Path(__file__).parent.parent.parent.parent / "templates"
 
+# Logo path (project root relative)
+LOGO_PATH = Path(__file__).parent.parent.parent.parent.parent / "os_modelo" / "WhatsApp Image 2026-07-18 at 17.12.06.jpeg"
+
 
 class PdfGenerator(IPdfGenerator):
     """WeasyPrint-based PDF generator for service orders."""
@@ -31,14 +35,15 @@ class PdfGenerator(IPdfGenerator):
         self.session = session
         self._env = Environment(
             loader=FileSystemLoader(str(TEMPLATE_DIR)),
-            autoescape=True,
+            autoescape=False,
         )
 
     async def generate_order_pdf(self, order_id: uuid.UUID) -> bytes:
         """Generate a PDF for a service order.
 
         Fetches all related entities (order, client, equipment, technician,
-        parts), renders the HTML template, then converts to PDF via WeasyPrint.
+        parts), renders the HTML template with embedded logo and QR code,
+        then converts to PDF via WeasyPrint.
 
         Args:
             order_id: UUID of the service order.
@@ -62,6 +67,13 @@ class PdfGenerator(IPdfGenerator):
         equipment = await self._get_entity(Equipment, order.equipment_id)
         technician = await self._get_entity(User, order.technician_id)
 
+        # Fetch equipment category name
+        category_name = ""
+        if equipment:
+            category = await self._get_entity(Category, equipment.category_id)
+            if category:
+                category_name = category.name
+
         # Fetch parts
         parts_result = await self.session.execute(
             select(ServiceOrderPart).where(
@@ -80,6 +92,16 @@ class PdfGenerator(IPdfGenerator):
         )
         attachments = list(attachments_result.scalars().all())
 
+        # Embed logo as base64
+        logo_base64 = self._load_logo_base64()
+
+        # Generate QR code as base64
+        qr_base64 = ""
+        if equipment and equipment.qr_code:
+            qr_base64 = self._generate_qr_base64(
+                f"https://ofiuco.com/equipment/{equipment.qr_code}"
+            )
+
         # Build template context
         context = {
             "order": order,
@@ -88,6 +110,9 @@ class PdfGenerator(IPdfGenerator):
             "technician": technician,
             "parts": parts,
             "attachments": attachments,
+            "category_name": category_name,
+            "logo_base64": logo_base64,
+            "qr_base64": qr_base64,
             "status_display": order.status.replace("_", " ").title(),
         }
 
@@ -115,6 +140,40 @@ class PdfGenerator(IPdfGenerator):
         except Exception as e:
             logger.error("PDF generation failed for order %s: %s", order.order_number, e)
             raise RuntimeError(f"PDF generation failed: {e}")
+
+    def _load_logo_base64(self) -> str:
+        """Load logo JPEG and return base64-encoded string.
+
+        Returns:
+            Base64-encoded logo, or empty string if file not found.
+        """
+        if not LOGO_PATH.exists():
+            logger.warning("Logo file not found at %s", LOGO_PATH)
+            return ""
+        try:
+            logo_bytes = LOGO_PATH.read_bytes()
+            return base64.b64encode(logo_bytes).decode("ascii")
+        except Exception as e:
+            logger.error("Failed to load logo: %s", e)
+            return ""
+
+    def _generate_qr_base64(self, url: str) -> str:
+        """Generate QR code PNG and return base64-encoded string.
+
+        Args:
+            url: URL to encode in the QR code.
+
+        Returns:
+            Base64-encoded QR PNG, or empty string on failure.
+        """
+        try:
+            from backend.app.infrastructure.qr.generator import generate_qr_png
+
+            qr_png = generate_qr_png(url)
+            return base64.b64encode(qr_png).decode("ascii")
+        except Exception as e:
+            logger.error("Failed to generate QR code for %s: %s", url, e)
+            return ""
 
     async def _get_entity(self, model_class, entity_id: uuid.UUID):
         """Fetch a single entity by ID.

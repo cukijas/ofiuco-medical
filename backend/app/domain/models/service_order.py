@@ -2,8 +2,9 @@
 
 import uuid
 from datetime import datetime, date
+from decimal import Decimal
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, String, Text, func
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -38,6 +39,16 @@ class ServiceOrder(Base):
     solution: Mapped[str | None] = mapped_column(Text, nullable=True)
     service_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     next_service_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    requested_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    department: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    visit_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    equipment_condition: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    declared_fault: Mapped[str | None] = mapped_column(Text, nullable=True)
+    accessories: Mapped[str | None] = mapped_column(Text, nullable=True)
+    work_hours: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    operators_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    kilometers: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    travel_expenses: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
