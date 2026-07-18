@@ -1,0 +1,1 @@
+"""OneDrive infrastructure adapter package."""

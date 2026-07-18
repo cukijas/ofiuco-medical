@@ -1,0 +1,1 @@
+"""QR code infrastructure adapters."""
