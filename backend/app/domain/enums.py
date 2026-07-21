@@ -3,45 +3,56 @@
 import enum
 
 
+# ── Existing enums (still used by auth, users, orders) ──
+
 class RoleEnum(str, enum.Enum):
-    """User roles."""
     admin = "admin"
     technician = "technician"
 
 
 class StatusEnum(str, enum.Enum):
-    """Service order status."""
     draft = "draft"
     in_progress = "in_progress"
     completed = "completed"
     delivered = "delivered"
 
 
-class CategoryEnum(str, enum.Enum):
-    """Equipment categories."""
-    rayos = "rayos"
-    mamografos = "mamografos"
-    arco_en_c = "arco_en_c"
-    tomografos = "tomografos"
-
-
 class VisitTypeEnum(str, enum.Enum):
-    """Service visit type."""
     normal = "normal"
     contract = "contract"
     warranty = "warranty"
 
 
 class EquipmentConditionEnum(str, enum.Enum):
-    """Equipment condition at time of service."""
     new = "new"
     used = "used"
     other = "other"
 
 
 class AttachmentTypeEnum(str, enum.Enum):
-    """Attachment types."""
     report = "report"
     photo = "photo"
     manual = "manual"
     other = "other"
+
+
+# ── New enums (from redesigned schema) ──
+
+class TipoClienteEnum(str, enum.Enum):
+    """Tipo de cliente."""
+    fisica = "fisica"
+    juridica = "juridica"
+
+
+class CondicionEnum(str, enum.Enum):
+    """Condición de equipo."""
+    nuevo = "nuevo"
+    usado = "usado"
+    otro = "otro"
+
+
+class TipoVisitaEnum(str, enum.Enum):
+    """Tipo de visita de servicio."""
+    normal = "normal"
+    por_contrato = "por contrato"
+    por_garantia = "por garantia"

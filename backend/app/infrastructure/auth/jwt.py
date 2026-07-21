@@ -2,7 +2,6 @@
 
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-import uuid
 
 from jose import JWTError, jwt
 
@@ -13,7 +12,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 15
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 
-def create_access_token(user_id: uuid.UUID, role: str) -> str:
+def create_access_token(user_id: int, role: str) -> str:
     """Create an access token.
 
     Args:
@@ -33,7 +32,7 @@ def create_access_token(user_id: uuid.UUID, role: str) -> str:
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def create_refresh_token(user_id: uuid.UUID) -> str:
+def create_refresh_token(user_id: int) -> str:
     """Create a refresh token.
 
     Args:
@@ -67,7 +66,7 @@ def decode_token(token: str) -> Optional[dict]:
         return None
 
 
-def get_user_id_from_token(token: str) -> Optional[uuid.UUID]:
+def get_user_id_from_token(token: str) -> Optional[int]:
     """Extract user ID from a token.
 
     Args:
@@ -79,8 +78,8 @@ def get_user_id_from_token(token: str) -> Optional[uuid.UUID]:
     payload = decode_token(token)
     if payload and "sub" in payload:
         try:
-            return uuid.UUID(payload["sub"])
-        except ValueError:
+            return int(payload["sub"])
+        except (ValueError, TypeError):
             return None
     return None
 

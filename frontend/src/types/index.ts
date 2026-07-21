@@ -18,16 +18,20 @@ export interface TokenResponse {
   token_type: string;
 }
 
+export type TipoCliente = 'fisica' | 'juridica';
+
 export interface Client {
-  id: string;
-  name: string;
+  id_cliente: number;
+  tipo_cliente: TipoCliente;
+  nombre: string;
+  telefono: string | null;
   email: string | null;
-  phone: string | null;
-  address: string | null;
-  city: string | null;
-  province: string | null;
-  postal_code: string | null;
-  is_active: boolean;
+  razon_social: string | null;
+  cuit: string | null;
+  obra_social: string | null;
+  direccion: string | null;
+  localidad: string | null;
+  dni: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -39,19 +43,36 @@ export interface ClientListResponse {
   limit: number;
 }
 
+export interface TipoEquipo {
+  id_tipo_equipos: number;
+  nombre: string;
+}
+
+export interface Marca {
+  id_marca: number;
+  nombre: string;
+}
+
+export interface SubtipoEquipo {
+  id_subtipo: number;
+  id_tipo_equipos: number;
+  nombre: string;
+}
+
+export type CondicionEquipo = 'nuevo' | 'usado' | 'otro';
+
 export interface Equipment {
-  id: string;
-  client_id: string;
-  category_id: string;
-  subcategory_id: string | null;
-  category_name: string | null;
-  subcategory_name: string | null;
-  brand: string;
-  model: string;
-  serial_number: string;
-  qr_code: string;
+  id_equipos: number;
+  id_tipo_equipos: number;
+  id_marca: number;
+  modelo: string;
+  id_cliente: number;
+  numero_serie: string | null;
+  descripcion: string | null;
+  condicion: CondicionEquipo;
+  accesorios: string | null;
+  qr_identifier: string;
   onedrive_path: string | null;
-  is_active: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -63,40 +84,53 @@ export interface EquipmentListResponse {
   limit: number;
 }
 
-export interface Part {
-  id: string;
-  service_order_id: string;
-  part_name: string;
-  part_number: string | null;
-  quantity: number;
-  unit_cost: number | null;
+export type TipoVisita = 'normal' | 'por contrato' | 'por garantía';
+export type CondicionEquipoOrden = 'nuevo' | 'usado' | 'otro';
+
+export interface OrdenServicio {
+  id_orden: number;
+  numero_orden: string;
+  numero_referencia: string;
+  id_cliente: number;
+  id_equipo: number;
+  id_empleado: number;
+  id_departamento: number | null;
+  solicitado_por: string;
+  tipo_visita: TipoVisita;
+  condicion_equipo: CondicionEquipoOrden;
+  accesorios: string | null;
+  fecha_realizacion: string;
+  fecha_finalizacion: string | null;
+  falla_detectada: string | null;
+  tarea_realizada: string | null;
+  horas_trabajo: number | null;
+  empleados_adicionales: string | null;
+  kilometros: number | null;
+  viaticos: number | null;
+  configuracion_equipo: string | null;
+  qr_identifier: string;
+  onedrive_path: string | null;
   created_at: string;
   updated_at: string;
 }
 
-export interface ServiceOrder {
-  id: string;
-  order_number: string;
-  client_id: string;
-  equipment_id: string;
-  technician_id: string;
-  status: StatusEnum;
-  description: string | null;
-  diagnosis: string | null;
-  solution: string | null;
-  service_date: string | null;
-  next_service_date: string | null;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-  parts: Part[];
-}
-
-export interface OrderListResponse {
-  items: ServiceOrder[];
+export interface OrdenServicioListResponse {
+  items: OrdenServicio[];
   total: number;
   skip: number;
   limit: number;
+}
+
+export interface Empleado {
+  id_empleado: number;
+  nombre: string;
+  especialidad: string | null;
+}
+
+export interface Departamento {
+  id_departamento: number;
+  id_cliente: number;
+  nombre: string;
 }
 
 export interface Attachment {

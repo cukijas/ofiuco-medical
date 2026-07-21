@@ -1,7 +1,6 @@
 """User repository implementation."""
 
 from typing import Optional
-import uuid
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,7 +22,7 @@ class UserRepo(IUserRepo):
         await self.session.refresh(user)
         return user
 
-    async def get_by_id(self, user_id: uuid.UUID) -> Optional[User]:
+    async def get_by_id(self, user_id: int) -> Optional[User]:
         """Get user by ID."""
         result = await self.session.execute(select(User).where(User.id == user_id))
         return result.scalar_one_or_none()
@@ -39,7 +38,7 @@ class UserRepo(IUserRepo):
         await self.session.refresh(user)
         return user
 
-    async def delete(self, user_id: uuid.UUID) -> bool:
+    async def delete(self, user_id: int) -> bool:
         """Delete a user."""
         user = await self.get_by_id(user_id)
         if user:

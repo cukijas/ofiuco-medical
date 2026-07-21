@@ -1,23 +1,22 @@
 """PDF generation API routes."""
 
-import uuid
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import Response
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.infrastructure.database.session import get_db
 from backend.app.infrastructure.auth.dependencies import require_role
 from backend.app.infrastructure.pdf.generator import PdfGenerator
-from backend.app.infrastructure.database.service_order_repo_impl import ServiceOrderRepo
+from backend.app.domain.models.ordenes_servicio import OrdenesServicio
 from backend.app.domain.models.user import User
 
-router = APIRouter(prefix="/pdf", tags=["pdf"])
+router = APIRouter(prefix="/ordenes-servicio", tags=["pdf"])
 
 
-@router.get("/orders/{order_id}")
+@router.get("/{orden_id}/pdf")
 async def download_order_pdf(
-    order_id: uuid.UUID,
+    orden_id: int,
     current_user: User = Depends(require_role(["admin", "technician"])),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
@@ -27,7 +26,7 @@ async def download_order_pdf(
     info, equipment info, parts, and technician details.
 
     Args:
-        order_id: UUID of the service order.
+        orden_id: Integer ID of the service order.
         current_user: Authenticated admin or technician.
         db: Database session.
 
@@ -35,9 +34,11 @@ async def download_order_pdf(
         PDF file as HTTP response with appropriate content type.
     """
     # Validate order exists
-    order_repo = ServiceOrderRepo(db)
-    order = await order_repo.get_by_id(order_id)
-    if not order or not order.is_active:
+    result = await db.execute(
+        select(OrdenesServicio).where(OrdenesServicio.id_orden == orden_id)
+    )
+    order = result.scalar_one_or_none()
+    if not order:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Service order not found",
@@ -45,7 +46,7 @@ async def download_order_pdf(
 
     generator = PdfGenerator(db)
     try:
-        pdf_bytes = await generator.generate_order_pdf(order_id)
+        pdf_bytes = await generator.generate_order_pdf(orden_id)
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -57,7 +58,7 @@ async def download_order_pdf(
             detail=str(e),
         )
 
-    filename = f"{order.order_number}.pdf"
+    filename = f"{order.numero_orden}.pdf"
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
@@ -65,52 +66,3 @@ async def download_order_pdf(
             "Content-Disposition": f'attachment; filename="{filename}"',
         },
     )
-
-
-@router.post("/orders/{order_id}/regenerate")
-async def regenerate_order_pdf(
-    order_id: uuid.UUID,
-    current_user: User = Depends(require_role(["admin", "technician"])),
-    db: AsyncSession = Depends(get_db),
-) -> dict:
-    """Regenerate PDF for a service order.
-
-    Same as download but returns metadata instead of the file.
-    Useful for triggering regeneration and confirming success.
-
-    Args:
-        order_id: UUID of the service order.
-        current_user: Authenticated admin or technician.
-        db: Database session.
-
-    Returns:
-        Dict with order number and PDF size.
-    """
-    # Validate order exists
-    order_repo = ServiceOrderRepo(db)
-    order = await order_repo.get_by_id(order_id)
-    if not order or not order.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Service order not found",
-        )
-
-    generator = PdfGenerator(db)
-    try:
-        pdf_bytes = await generator.generate_order_pdf(order_id)
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
-        )
-    except RuntimeError as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e),
-        )
-
-    return {
-        "order_number": order.order_number,
-        "pdf_size_bytes": len(pdf_bytes),
-        "status": "regenerated",
-    }

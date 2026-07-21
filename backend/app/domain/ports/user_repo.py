@@ -2,7 +2,6 @@
 
 from abc import ABC, abstractmethod
 from typing import Optional
-import uuid
 
 from backend.app.domain.models.user import User
 
@@ -16,7 +15,7 @@ class IUserRepo(ABC):
         ...
 
     @abstractmethod
-    async def get_by_id(self, user_id: uuid.UUID) -> Optional[User]:
+    async def get_by_id(self, user_id: int) -> Optional[User]:
         """Get user by ID."""
         ...
 
@@ -31,6 +30,6 @@ class IUserRepo(ABC):
         ...
 
     @abstractmethod
-    async def delete(self, user_id: uuid.UUID) -> bool:
+    async def delete(self, user_id: int) -> bool:
         """Delete a user."""
         ...

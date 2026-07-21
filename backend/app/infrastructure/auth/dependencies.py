@@ -48,6 +48,16 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
+    # Convert user_id to int (JWT stores as string)
+    try:
+        user_id = int(user_id)
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token payload",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
     user_repo: IUserRepo = UserRepo(db)
     user = await user_repo.get_by_id(user_id)
     if user is None:

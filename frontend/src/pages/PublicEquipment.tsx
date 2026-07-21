@@ -18,7 +18,7 @@ export function PublicEquipment() {
       .getEquipment(qrId)
       .then((eq) => {
         setEquipment(eq);
-        return publicApi.getAttachments(eq.id);
+        return publicApi.getAttachments(eq.id_equipos);
       })
       .then((att) => setAttachments(att.items))
       .catch((err) => setError(err.message || 'Equipo no encontrado'))
@@ -53,20 +53,26 @@ export function PublicEquipment() {
             <dl className="mt-3 grid gap-3 sm:grid-cols-2">
               <div>
                 <dt className="text-xs font-medium text-gray-500">Marca / Modelo</dt>
-                <dd className="text-sm text-gray-900">{equipment.brand} {equipment.model}</dd>
+                <dd className="text-sm text-gray-900">{equipment.modelo}</dd>
               </div>
               <div>
                 <dt className="text-xs font-medium text-gray-500">Número de Serie</dt>
-                <dd className="text-sm text-gray-900">{equipment.serial_number}</dd>
+                <dd className="text-sm text-gray-900">{equipment.numero_serie}</dd>
               </div>
               <div>
-                <dt className="text-xs font-medium text-gray-500">Categoría</dt>
-                <dd className="text-sm text-gray-900">{equipment.category_name || equipment.category_id}</dd>
+                <dt className="text-xs font-medium text-gray-500">Condición</dt>
+                <dd className="text-sm text-gray-900 capitalize">{equipment.condicion}</dd>
               </div>
-              {equipment.subcategory_name && (
-                <div>
-                  <dt className="text-xs font-medium text-gray-500">Subcategoría</dt>
-                  <dd className="text-sm text-gray-900">{equipment.subcategory_name}</dd>
+              {equipment.descripcion && (
+                <div className="sm:col-span-2">
+                  <dt className="text-xs font-medium text-gray-500">Descripción</dt>
+                  <dd className="text-sm text-gray-900">{equipment.descripcion}</dd>
+                </div>
+              )}
+              {equipment.accesorios && (
+                <div className="sm:col-span-2">
+                  <dt className="text-xs font-medium text-gray-500">Accesorios</dt>
+                  <dd className="text-sm text-gray-900">{equipment.accesorios}</dd>
                 </div>
               )}
               <div>

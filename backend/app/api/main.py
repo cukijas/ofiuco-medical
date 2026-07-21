@@ -5,14 +5,21 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from backend.app.api.routes.auth import router as auth_router
-from backend.app.api.routes.clients import router as clients_router
-from backend.app.api.routes.equipment import router as equipment_router
-from backend.app.api.routes.service_orders import router as service_orders_router
-from backend.app.api.routes.onedrive import router as onedrive_router
+from backend.app.api.routes.tipo_equipos import router as tipo_equipos_router
+from backend.app.api.routes.subtipo_equipos import router as subtipo_equipos_router
+from backend.app.api.routes.marcas import router as marcas_router
+from backend.app.api.routes.empleados import router as empleados_router
+from backend.app.api.routes.clientes import router as clientes_router
+from backend.app.api.routes.departamentos import router as departamentos_router
+from backend.app.api.routes.equipos import router as equipos_router
+from backend.app.api.routes.ordenes_servicio import router as ordenes_servicio_router
+
+# Legacy routes — disabled until infrastructure is migrated to new schema
+# from backend.app.api.routes.onedrive import router as onedrive_router
 from backend.app.api.routes.pdf import router as pdf_router
-from backend.app.api.routes.attachments import router as attachments_router
-from backend.app.api.routes.categories import router as categories_router
-from backend.app.api.routes.public import router as public_router
+# from backend.app.api.routes.attachments import router as attachments_router
+# from backend.app.api.routes.categories import router as categories_router
+# from backend.app.api.routes.public import router as public_router
 
 
 def create_app() -> FastAPI:
@@ -40,16 +47,23 @@ def create_app() -> FastAPI:
     
     # Include routers (authenticated)
     app.include_router(auth_router, prefix="/api/v1")
-    app.include_router(clients_router, prefix="/api/v1")
-    app.include_router(equipment_router, prefix="/api/v1")
-    app.include_router(service_orders_router, prefix="/api/v1")
-    app.include_router(onedrive_router, prefix="/api/v1")
-    app.include_router(pdf_router, prefix="/api/v1")
-    app.include_router(attachments_router, prefix="/api/v1")
-    app.include_router(categories_router, prefix="/api/v1")
+    app.include_router(tipo_equipos_router, prefix="/api/v1")
+    app.include_router(subtipo_equipos_router, prefix="/api/v1")
+    app.include_router(marcas_router, prefix="/api/v1")
+    app.include_router(empleados_router, prefix="/api/v1")
+    app.include_router(clientes_router, prefix="/api/v1")
+    app.include_router(departamentos_router, prefix="/api/v1")
+    app.include_router(equipos_router, prefix="/api/v1")
+    app.include_router(ordenes_servicio_router, prefix="/api/v1")
 
-    # Public routes (no auth)
-    app.include_router(public_router)
+    # Legacy routes — disabled until infrastructure is migrated to new schema
+    # app.include_router(onedrive_router, prefix="/api/v1")
+    app.include_router(pdf_router, prefix="/api/v1")
+    # app.include_router(attachments_router, prefix="/api/v1")
+    # app.include_router(categories_router, prefix="/api/v1")
+
+    # Public routes (no auth) — disabled until migrated
+    # app.include_router(public_router)
     
     # Health endpoint
     @app.get("/health", tags=["health"])

@@ -2,7 +2,6 @@
 
 from datetime import datetime
 from typing import Optional
-import uuid
 
 from pydantic import BaseModel, EmailStr, Field
 
@@ -32,7 +31,7 @@ class TokenResponse(BaseModel):
 
 class UserResponse(BaseModel):
     """Response model for user data."""
-    id: uuid.UUID = Field(..., description="User ID")
+    id: int = Field(..., description="User ID")
     email: str = Field(..., description="User email")
     full_name: Optional[str] = Field(None, description="User full name")
     role: RoleEnum = Field(..., description="User role")

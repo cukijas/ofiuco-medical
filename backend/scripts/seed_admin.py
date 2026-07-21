@@ -11,7 +11,6 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, Asyn
 
 from backend.app.domain.models.user import User
 from backend.app.infrastructure.auth.password import hash_password
-from backend.app.infrastructure.database.Base import Base
 
 
 DATABASE_URL = "postgresql+asyncpg://postgres:postgres@db:5432/ofiuco_medical"

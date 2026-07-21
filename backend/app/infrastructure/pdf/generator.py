@@ -2,7 +2,6 @@
 
 import base64
 import logging
-import uuid
 from pathlib import Path
 
 import jinja2
@@ -10,13 +9,14 @@ from jinja2 import Environment, FileSystemLoader
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.domain.models.attachment import Attachment
-from backend.app.domain.models.category import Category
-from backend.app.domain.models.client import Client
-from backend.app.domain.models.equipment import Equipment
-from backend.app.domain.models.service_order import ServiceOrder
-from backend.app.domain.models.service_order_part import ServiceOrderPart
-from backend.app.domain.models.user import User
+from backend.app.domain.models.clientes import Clientes
+from backend.app.domain.models.departamentos import Departamentos
+from backend.app.domain.models.empleados import Empleados
+from backend.app.domain.models.equipos import Equipos
+from backend.app.domain.models.insumos import Insumos
+from backend.app.domain.models.marcas import Marcas
+from backend.app.domain.models.ordenes_servicio import OrdenesServicio
+from backend.app.domain.models.tipo_equipos import TipoEquipos
 from backend.app.domain.ports.pdf_generator import IPdfGenerator
 
 logger = logging.getLogger(__name__)
@@ -25,7 +25,11 @@ logger = logging.getLogger(__name__)
 TEMPLATE_DIR = Path(__file__).parent.parent.parent.parent / "templates"
 
 # Logo path (project root relative)
-LOGO_PATH = Path(__file__).parent.parent.parent.parent.parent / "os_modelo" / "WhatsApp Image 2026-07-18 at 17.12.06.jpeg"
+LOGO_PATH = (
+    Path(__file__).parent.parent.parent.parent.parent
+    / "os_modelo"
+    / "WhatsApp Image 2026-07-18 at 17.12.06.jpeg"
+)
 
 
 class PdfGenerator(IPdfGenerator):
@@ -38,82 +42,100 @@ class PdfGenerator(IPdfGenerator):
             autoescape=False,
         )
 
-    async def generate_order_pdf(self, order_id: uuid.UUID) -> bytes:
+    async def generate_order_pdf(self, order_id: int) -> bytes:
         """Generate a PDF for a service order.
 
         Fetches all related entities (order, client, equipment, technician,
-        parts), renders the HTML template with embedded logo and QR code,
-        then converts to PDF via WeasyPrint.
+        additional technicians, insumos), renders the HTML template with
+        embedded logo and QR code, then converts to PDF via WeasyPrint.
 
         Args:
-            order_id: UUID of the service order.
+            order_id: Integer ID of the service order.
 
         Returns:
             PDF file as bytes.
 
         Raises:
-            ValueError: If order or related entities not found.
+            ValueError: If order or required related entities not found.
         """
         # Fetch the order
         result = await self.session.execute(
-            select(ServiceOrder).where(ServiceOrder.id == order_id)
+            select(OrdenesServicio).where(OrdenesServicio.id_orden == order_id)
         )
         order = result.scalar_one_or_none()
         if not order:
             raise ValueError(f"Service order {order_id} not found")
 
-        # Fetch related entities
-        client = await self._get_entity(Client, order.client_id)
-        equipment = await self._get_entity(Equipment, order.equipment_id)
-        technician = await self._get_entity(User, order.technician_id)
+        # Fetch client
+        client = await self._fetch_by_id(Clientes, Clientes.id_cliente, order.id_cliente)
+        if not client:
+            raise ValueError(f"Client {order.id_cliente} not found for order {order_id}")
 
-        # Fetch equipment category name
-        category_name = ""
-        if equipment:
-            category = await self._get_entity(Category, equipment.category_id)
-            if category:
-                category_name = category.name
+        # Fetch equipment
+        equipo = await self._fetch_by_id(Equipos, Equipos.id_equipos, order.id_equipo)
+        if not equipo:
+            raise ValueError(f"Equipment {order.id_equipo} not found for order {order_id}")
 
-        # Fetch parts
-        parts_result = await self.session.execute(
-            select(ServiceOrderPart).where(
-                ServiceOrderPart.service_order_id == order_id,
-                ServiceOrderPart.is_active == True,
-            )
+        # Fetch primary technician
+        empleado = await self._fetch_by_id(
+            Empleados, Empleados.id_empleado, order.id_empleado
         )
-        parts = list(parts_result.scalars().all())
-
-        # Fetch attachments for this order
-        attachments_result = await self.session.execute(
-            select(Attachment).where(
-                Attachment.service_order_id == order_id,
-                Attachment.is_active == True,
+        if not empleado:
+            raise ValueError(
+                f"Employee {order.id_empleado} not found for order {order_id}"
             )
+
+        # Fetch equipment category (TipoEquipos)
+        tipo_equipo = await self._fetch_by_id(
+            TipoEquipos, TipoEquipos.id_tipo_equipos, equipo.id_tipo_equipos
         )
-        attachments = list(attachments_result.scalars().all())
+
+        # Fetch equipment brand (Marcas)
+        marca = await self._fetch_by_id(Marcas, Marcas.id_marca, equipo.id_marca)
+
+        # Fetch department (nullable)
+        departamento = None
+        if order.id_departamento:
+            departamento = await self._fetch_by_id(
+                Departamentos,
+                Departamentos.id_departamento,
+                order.id_departamento,
+            )
+
+        # Resolve additional technician IDs to names
+        tecnicos_adicionales = await self._resolve_additional_techs(
+            order.empleados_adicionales
+        )
+
+        # Fetch insumos for this order
+        insumos_result = await self.session.execute(
+            select(Insumos).where(Insumos.id_orden == order_id)
+        )
+        insumos = list(insumos_result.scalars().all())
 
         # Embed logo as base64
         logo_base64 = self._load_logo_base64()
 
-        # Generate QR code as base64
+        # Generate QR code as base64 (using equipment's qr_identifier)
         qr_base64 = ""
-        if equipment and equipment.qr_code:
+        if equipo.qr_identifier:
             qr_base64 = self._generate_qr_base64(
-                f"https://ofiuco.com/equipment/{equipment.qr_code}"
+                f"https://ofiuco.com/equipment/{equipo.qr_identifier}"
             )
 
         # Build template context
         context = {
             "order": order,
             "client": client,
-            "equipment": equipment,
-            "technician": technician,
-            "parts": parts,
-            "attachments": attachments,
-            "category_name": category_name,
+            "equipo": equipo,
+            "empleado": empleado,
+            "marca": marca,
+            "tipo_equipo": tipo_equipo,
+            "departamento": departamento,
+            "tecnicos_adicionales": tecnicos_adicionales,
+            "insumos": insumos,
             "logo_base64": logo_base64,
             "qr_base64": qr_base64,
-            "status_display": order.status.replace("_", " ").title(),
         }
 
         # Render HTML
@@ -127,7 +149,7 @@ class PdfGenerator(IPdfGenerator):
             pdf_bytes = HTML(string=html_content).write_pdf()
             logger.info(
                 "Generated PDF for order %s (%d bytes)",
-                order.order_number,
+                order.numero_orden,
                 len(pdf_bytes),
             )
             return pdf_bytes
@@ -138,7 +160,9 @@ class PdfGenerator(IPdfGenerator):
                 "Install it with: pip install weasyprint"
             )
         except Exception as e:
-            logger.error("PDF generation failed for order %s: %s", order.order_number, e)
+            logger.error(
+                "PDF generation failed for order %s: %s", order.numero_orden, e
+            )
             raise RuntimeError(f"PDF generation failed: {e}")
 
     def _load_logo_base64(self) -> str:
@@ -175,17 +199,60 @@ class PdfGenerator(IPdfGenerator):
             logger.error("Failed to generate QR code for %s: %s", url, e)
             return ""
 
-    async def _get_entity(self, model_class, entity_id: uuid.UUID):
-        """Fetch a single entity by ID.
+    async def _resolve_additional_techs(
+        self, empleados_adicionales: str | None
+    ) -> list[Empleados]:
+        """Resolve comma-separated employee IDs to Empleados objects.
+
+        Unknown IDs are represented as lightweight fallback objects with
+        a ``nombre`` attribute set to the raw ID string.
+
+        Args:
+            empleados_adicionales: Comma-separated employee IDs, or None.
+
+        Returns:
+            List of Empleados instances (or fallback objects).
+        """
+        if not empleados_adicionales or not empleados_adicionales.strip():
+            return []
+
+        raw_ids = [
+            int(tid.strip())
+            for tid in empleados_adicionales.split(",")
+            if tid.strip()
+        ]
+        if not raw_ids:
+            return []
+
+        result = await self.session.execute(
+            select(Empleados).where(Empleados.id_empleado.in_(raw_ids))
+        )
+        found = {e.id_empleado: e for e in result.scalars().all()}
+
+        # Preserve order from the comma-separated string; fallback for missing IDs
+        techs = []
+        for tid in raw_ids:
+            if tid in found:
+                techs.append(found[tid])
+            else:
+                # Lightweight fallback — has .nombre attribute for template rendering
+                fallback = type("FallbackTech", (), {"nombre": str(tid)})()
+                techs.append(fallback)
+
+        return techs
+
+    async def _fetch_by_id(self, model_class, pk_column, entity_id):
+        """Fetch a single entity by its primary key column.
 
         Args:
             model_class: SQLAlchemy model class.
-            entity_id: UUID of the entity.
+            pk_column: The primary key column of the model.
+            entity_id: ID value to match.
 
         Returns:
             The entity instance, or None if not found.
         """
         result = await self.session.execute(
-            select(model_class).where(model_class.id == entity_id)
+            select(model_class).where(pk_column == entity_id)
         )
         return result.scalar_one_or_none()
